@@ -24,7 +24,7 @@ st.set_page_config(
 # Custom CSS for better styling
 st.markdown("""
 <style>
-    .stTabs [data-baseweb="tab"] {
+    .stTabs [data-baseweb=\"tab\"] {
         font-size: 1.2rem;
         font-weight: 600;
     }
@@ -40,9 +40,7 @@ def load_and_validate_data(path: str = 'Donn_es_simul_es_ADII.csv') -> pd.DataFr
     try:
         df = pd.read_csv(path, sep=';')
         df = df.drop_duplicates()
-        # Fill numeric NaNs with mean
         df = df.fillna(df.mean(numeric_only=True))
-        # Clip numeric to 1-5
         num_cols = df.select_dtypes(include=['float64', 'int64']).columns
         df[num_cols] = df[num_cols].clip(1, 5)
         return df
@@ -58,10 +56,10 @@ def calculate_mean_score(df: pd.DataFrame, cols: list[str]) -> float:
 
 @st.cache_data
 def perform_advanced_analysis(df: pd.DataFrame, x: str, y: str) -> dict:
-    # Compute Pearson correlation and p-value
     corr, p = stats.pearsonr(df[x], df[y])
     lin = stats.linregress(df[x], df[y])
-    return {'correlation': corr, 'p_value': p, 't_stat': lin.slope / lin.stderr if lin.stderr else np.nan}
+    t_stat = lin.slope / lin.stderr if lin.stderr else np.nan
+    return {'correlation': corr, 'p_value': p, 't_stat': t_stat}
 
 @st.cache_data
 def generate_insights(results: dict, x: str, y: str) -> list[str]:
@@ -77,12 +75,10 @@ def generate_insights(results: dict, x: str, y: str) -> list[str]:
 
 @st.cache_data
 def export_results(df: pd.DataFrame, scores: dict) -> None:
-    # Export summary scores as Excel
     data = pd.DataFrame(list(scores.items()), columns=['Dimension', 'Score'])
     buffer = BytesIO()
     with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
         data.to_excel(writer, sheet_name='Scores', index=False)
-        writer.save()
     st.download_button('Télécharger les scores', data=buffer.getvalue(), file_name='scores.xlsx')
 
 # Load data
@@ -94,9 +90,9 @@ if df is None or df.empty:
 
 # Sidebar
 st.sidebar.title('Navigation')
-st.sidebar.markdown(f"**Observations:** {len(df)}  
-**Variables:** {len(df.columns)}")
-st.sidebar.markdown(f"**Date:** {df['Date'].min() if 'Date' in df else 'N/A'} - {df['Date'].max() if 'Date' in df else 'N/A'}")
+st.sidebar.markdown(f"""**Observations:** {len(df)}  
+**Variables:** {len(df.columns)}""")
+st.sidebar.markdown(f"""**Date:** {df['Date'].min() if 'Date' in df else 'N/A'} - {df['Date'].max() if 'Date' in df else 'N/A'}""")
 
 # Define variable dictionary
 var_dict = {
@@ -105,7 +101,7 @@ var_dict = {
     'SAT': {'full_name': 'Satisfaction',   'items': {f'SAT_{i}': '' for i in range(1,5)}},
     'FOR': {'full_name': 'Formation',      'items': {f'FOR_{i}': '' for i in range(1,5)}},
     'RE':  {'full_name': 'Résistance',     'items': {f'RE_{i}': ''  for i in range(1,5)}},
-    'PE':  {'full_name': 'Efficacité',      'items': {f'PE_{i}': ''  for i in range(1,5)}},
+    'PE':  {'full_name': 'Efficacité',     'items': {f'PE_{i}': ''  for i in range(1,5)}},
     'EE':  {'full_name': 'Effort',         'items': {f'EE_{i}': ''  for i in range(1,5)}},
     'FC':  {'full_name': 'Facilitants',    'items': {f'FC_{i}': ''  for i in range(1,5)}},
     'SI':  {'full_name': 'Social',         'items': {f'SI_{i}': ''  for i in range(1,5)}},
@@ -119,7 +115,7 @@ tabs = st.tabs([
 # Tab: Accueil
 with tabs[0]:
     st.title('Tableau de Bord ADII')
-    st.write('Analyse de la transformation digitale à l'ADII')
+    st.write('Analyse de la transformation digitale à l\'ADII')
 
 # Tab: Univariée
 with tabs[1]:
@@ -169,6 +165,7 @@ with tabs[4]:
 # Tab: Régression
 with tabs[5]:
     st.header('Régression Linéaire')
+    all_items = [v for info in var_dict.values() for v in info['items'].keys()]
     target = st.selectbox('Cible', all_items)
     features = st.multiselect('Features', [c for c in df.columns if c.endswith('_enc')])
     if st.button('Exécuter') and target in df.columns and features:
