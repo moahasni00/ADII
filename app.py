@@ -35,14 +35,7 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Load and cache data
-@st.cache_data
-def load_data():
-    return pd.read_csv('Donn_es_simul_es_ADII.csv')
-
-df = load_data()
-
-# Variable dictionary
+# Variable dictionary with exact column names from CSV
 var_dict = {
     'ADT': {
         'full_name': 'Adoption de la Transformation Digitale',
@@ -82,23 +75,36 @@ with tabs[0]:
         with st.expander(f"📌 {var_info['full_name']}"):
             st.markdown(f"**Description:** {var_info['description']}")
             
-            # Calculate mean score for the dimension
+            # Calculate mean score with error handling
             var_cols = [f"{var_key}_{i}" for i in range(1, 5)]
-            mean_score = df[var_cols].mean().mean()
+            mean_score = calculate_mean_score(df, var_cols)
             
-            st.metric("Score Moyen", f"{mean_score:.2f}/5")
-            
-            # Display items in a table
-            items_df = pd.DataFrame(var_info['items'].items(), 
-                                  columns=['Code', 'Question'])
-            st.table(items_df)
-            
-            # Show distribution
-            fig = px.histogram(df[var_cols].mean(axis=1),
-                             title=f'Distribution des Scores - {var_info["full_name"]}',
-                             labels={'value': 'Score Moyen', 'count': 'Fréquence'},
-                             color_discrete_sequence=['#3498db'])
-            st.plotly_chart(fig)
+            if mean_score is not None:
+                # Add color coding based on score
+                color = 'red' if mean_score < 2.5 else 'green' if mean_score > 3.5 else 'orange'
+                st.markdown(f"**Score Moyen:** <span style='color:{color}'>{mean_score:.2f}/5</span>", unsafe_allow_html=True)
+                
+                # Display items in a more attractive table
+                st.markdown("#### Questions Associées:")
+                for code, question in var_info['items'].items():
+                    st.markdown(f"- **{code}:** {question}")
+                
+                # Show distribution with improved styling
+                try:
+                    scores = df[var_cols].mean(axis=1)
+                    fig = px.histogram(scores,
+                                     title=f'Distribution des Scores - {var_info["full_name"]}',
+                                     labels={'value': 'Score Moyen', 'count': 'Fréquence'},
+                                     color_discrete_sequence=['#3498db'],
+                                     nbins=20)
+                    fig.update_layout(
+                        plot_bgcolor='white',
+                        paper_bgcolor='white',
+                        margin=dict(t=40, l=0, r=0, b=0)
+                    )
+                    st.plotly_chart(fig, use_container_width=True)
+                except Exception as e:
+                    st.error("Erreur lors de la création du graphique.")
 
 # Tab 2: Univariate Analysis
 with tabs[1]:
@@ -336,3 +342,18 @@ st.markdown("""
     <p><em>Développé avec Streamlit et Python</em></p>
 </div>
 """, unsafe_allow_html=True)
+
+# Load and cache data with proper separator
+@st.cache_data
+def load_data():
+    return pd.read_csv('Donn_es_simul_es_ADII.csv', sep=';')
+
+df = load_data()
+
+# Add error handling for mean score calculation
+def calculate_mean_score(dataframe, columns):
+    try:
+        return dataframe[columns].mean().mean()
+    except KeyError as e:
+        st.error(f"Erreur: Certaines colonnes ne sont pas trouvées dans le jeu de données. Vérifiez les noms des colonnes.")
+        return None
