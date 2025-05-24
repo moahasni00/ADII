@@ -147,9 +147,20 @@ var_dict = {
 
 # Utility functions
 @st.cache_data
-def load_data():
+# Load data with validation
+def load_and_validate_data():
     try:
         df = pd.read_csv('Donn_es_simul_es_ADII.csv', sep=';')
+        if df is not None:
+            # Remove duplicates
+            df = df.drop_duplicates()
+            
+            # Handle missing values
+            df = df.fillna(df.mean(numeric_only=True))
+            
+            # Validate value ranges
+            for col in df.select_dtypes(include=['float64', 'int64']).columns:
+                df[col] = df[col].clip(1, 5)  # Assuming 1-5 scale
         return df
     except FileNotFoundError:
         st.error("❌ Le fichier de données n'a pas été trouvé. Veuillez vérifier le chemin d'accès.")
@@ -158,153 +169,11 @@ def load_data():
         st.error(f"❌ Une erreur s'est produite lors du chargement des données: {str(e)}")
         return None
 
-def validate_and_clean_data(df):
-    # Remove duplicates
-    df = df.drop_duplicates()
-    
-    # Handle missing values
-    df = df.fillna(df.mean(numeric_only=True))
-    
-    # Validate value ranges
-    for col in df.select_dtypes(include=['float64', 'int64']).columns:
-        df[col] = df[col].clip(1, 5)  # Assuming 1-5 scale
-    
-    return df
-
-# Use in data loading
-df = validate_and_clean_data(df)
-
-def calculate_mean_score(dataframe, columns):
-    """Calculate mean score with error handling"""
-    try:
-        return dataframe[columns].mean().mean()
-    except KeyError as e:
-        st.error(f"Erreur: Certaines colonnes ne sont pas trouvées dans le jeu de données. Vérifiez les noms des colonnes.")
-        return None
-
-def perform_advanced_analysis(data, var1, var2):
-    """Perform advanced statistical analysis between two variables"""
-    try:
-        correlation = data[var1].corr(data[var2])
-        mean_var1 = data[var1].mean()
-        mean_var2 = data[var2].mean()
-        std_var1 = data[var1].std()
-        std_var2 = data[var2].std()
-        t_stat, p_value = stats.ttest_ind(data[var1], data[var2])
-        
-        return {
-            'correlation': correlation,
-            'mean_var1': mean_var1,
-            'mean_var2': mean_var2,
-            'std_var1': std_var1,
-            'std_var2': std_var2,
-            't_stat': t_stat,
-            'p_value': p_value
-        }
-    except Exception as e:
-        st.error(f"Erreur lors de l'analyse statistique: {str(e)}")
-        return None
-
-def analyze_dimension(df, dimension_key):
-    """Analyze a specific dimension and generate visualizations"""
-    dim_cols = [f"{dimension_key}_{i}" for i in range(1, 5)]
-    mean_scores = df[dim_cols].mean()
-    
-    fig = px.bar(
-        x=dim_cols,
-        y=mean_scores,
-        title=f"Scores moyens - {var_dict[dimension_key]['full_name']}",
-        labels={'x': 'Questions', 'y': 'Score Moyen'},
-        color=mean_scores,
-        color_continuous_scale='viridis'
-    )
-    
-    return fig
-
-def generate_insights(stats_results, var1_name, var2_name):
-    """Generate insights based on statistical analysis results"""
-    insights = []
-    
-    if stats_results['correlation'] > 0.7:
-        insights.append(f"Forte corrélation positive entre {var1_name} et {var2_name}")
-    elif stats_results['correlation'] < -0.7:
-        insights.append(f"Forte corrélation négative entre {var1_name} et {var2_name}")
-    
-    if stats_results['p_value'] < 0.05:
-        insights.append("Différence statistiquement significative entre les variables")
-    else:
-        insights.append("Pas de différence statistiquement significative")
-    
-    return insights
-
-def analyze_trends(df, dimension):
-    """Analyze trends over time for a specific dimension"""
-    dim_cols = [f"{dimension}_{i}" for i in range(1, 5)]
-    trend_data = df[dim_cols].mean(axis=1).rolling(window=10).mean()
-    
-    fig = px.line(
-        trend_data,
-        title=f"Évolution des scores - {var_dict[dimension]['full_name']}",
-        labels={'value': 'Score Moyen', 'index': 'Observations'}
-    )
-    return fig
-
-def compare_groups(df, dimension, group_col):
-    """Compare dimension scores across different groups"""
-    dim_cols = [f"{dimension}_{i}" for i in range(1, 5)]
-    group_scores = df.groupby(group_col)[dim_cols].mean().mean(axis=1)
-    
-    fig = px.bar(
-        group_scores,
-        title=f"Comparaison par {group_col} - {var_dict[dimension]['full_name']}",
-        labels={'value': 'Score Moyen', 'index': group_col}
-    )
-    return fig
-
-def export_results(df, dimension_scores):
-    """Export analysis results to various formats"""
-    summary_df = pd.DataFrame(
-        list(dimension_scores.items()),
-        columns=['Dimension', 'Score Moyen']
-    )
-    
-    export_format = st.selectbox(
-        'Format d\'export',
-        ['CSV', 'Excel', 'JSON']
-    )
-    
-    if st.button('Exporter les résultats'):
-        if export_format == 'CSV':
-            csv = summary_df.to_csv(index=False)
-            st.download_button(
-                'Télécharger CSV',
-                csv,
-                'resultats_analyse.csv',
-                'text/csv'
-            )
-        elif export_format == 'Excel':
-            output = BytesIO()
-            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                summary_df.to_excel(writer, sheet_name='Résumé', index=False)
-            st.download_button(
-                'Télécharger Excel',
-                output.getvalue(),
-                'resultats_analyse.xlsx',
-                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
-            )
-        else:
-            json_str = summary_df.to_json(orient='records')
-            st.download_button(
-                'Télécharger JSON',
-                json_str,
-                'resultats_analyse.json',
-                'application/json'
-            )
-
-# Load data
+# Load and validate data
 with st.spinner('Chargement des données...'):
-    df = load_data()
+    df = load_and_validate_data()
 
+# Check if data is loaded successfully before proceeding
 if df is not None:
     # Sidebar navigation
     st.sidebar.title('Navigation')
