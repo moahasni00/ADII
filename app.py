@@ -1,19 +1,20 @@
-# Import required libraries
+```python
+# app.py
 import streamlit as st
 import pandas as pd
 import numpy as np
-import seaborn as sns
 import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
 from scipy import stats
 from sklearn.preprocessing import LabelEncoder
-from sklearn.linear_model import LinearRegression
-from sklearn.metrics import r2_score
+from sklearn.linear_model import LinearRegression, LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import r2_score, accuracy_score, roc_auc_score, classification_report
 from io import BytesIO
 from datetime import datetime
 
-# Page configuration
+# --- Page Configuration ---
 st.set_page_config(
     page_title="ADII Digital Transformation Dashboard",
     page_icon="📊",
@@ -21,20 +22,7 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
-st.markdown("""
-<style>
-    .stTabs [data-baseweb=\"tab\"] {
-        font-size: 1.2rem;
-        font-weight: 600;
-    }
-    h1 { font-size: 2.5rem; }
-    h2 { font-size: 2rem; }
-    h3 { font-size: 1.5rem; }
-</style>
-""", unsafe_allow_html=True)
-
-# Utility functions
+# --- Utility Functions ---
 @st.cache_data
 def load_and_validate_data(path: str = 'Donn_es_simul_es_ADII.csv') -> pd.DataFrame | None:
     try:
@@ -54,133 +42,163 @@ def load_and_validate_data(path: str = 'Donn_es_simul_es_ADII.csv') -> pd.DataFr
 def calculate_mean_score(df: pd.DataFrame, cols: list[str]) -> float:
     return df[cols].mean(axis=1).mean()
 
-@st.cache_data
-def perform_advanced_analysis(df: pd.DataFrame, x: str, y: str) -> dict:
-    corr, p = stats.pearsonr(df[x], df[y])
-    lin = stats.linregress(df[x], df[y])
-    t_stat = lin.slope / lin.stderr if lin.stderr else np.nan
-    return {'correlation': corr, 'p_value': p, 't_stat': t_stat}
-
-@st.cache_data
-def generate_insights(results: dict, x: str, y: str) -> list[str]:
-    insights = []
-    r = results['correlation']
-    if abs(r) > 0.7:
-        insights.append('Relation forte détectée')
-    elif abs(r) > 0.3:
-        insights.append('Relation modérée détectée')
-    else:
-        insights.append('Relation faible ou nulle détectée')
-    return insights
-
-@st.cache_data
-def export_results(df: pd.DataFrame, scores: dict) -> None:
-    data = pd.DataFrame(list(scores.items()), columns=['Dimension', 'Score'])
-    buffer = BytesIO()
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        data.to_excel(writer, sheet_name='Scores', index=False)
-    st.download_button('Télécharger les scores', data=buffer.getvalue(), file_name='scores.xlsx')
-
-# Load data
+# --- Load Data ---
 with st.spinner('Chargement des données...'):
     df = load_and_validate_data()
 
 if df is None or df.empty:
     st.stop()
 
-# Sidebar
-st.sidebar.title('Navigation')
-st.sidebar.markdown(f"""**Observations:** {len(df)}  
-**Variables:** {len(df.columns)}""")
-st.sidebar.markdown(f"""**Date:** {df['Date'].min() if 'Date' in df else 'N/A'} - {df['Date'].max() if 'Date' in df else 'N/A'}""")
+# --- Sidebar Summary ---
+st.sidebar.title('💡 Résumé des Données')
+st.sidebar.markdown(f"**Observations:** {len(df)}  ")
+st.sidebar.markdown(f"**Variables:** {len(df.columns)}")
+st.sidebar.markdown(f"**Date:** {df['Date'].min() if 'Date' in df else 'N/A'} - {df['Date'].max() if 'Date' in df else 'N/A'}")
 
-# Define variable dictionary
+# --- Variable Dictionary ---
 var_dict = {
-    'ADT': {'full_name': 'Adoption digitale', 'items': {f'ADT_{i}': '' for i in range(1,5)}},
-    'INT': {'full_name': 'Intention',      'items': {f'INT_{i}': '' for i in range(1,5)}},
-    'SAT': {'full_name': 'Satisfaction',   'items': {f'SAT_{i}': '' for i in range(1,5)}},
-    'FOR': {'full_name': 'Formation',      'items': {f'FOR_{i}': '' for i in range(1,5)}},
-    'RE':  {'full_name': 'Résistance',     'items': {f'RE_{i}': ''  for i in range(1,5)}},
-    'PE':  {'full_name': 'Efficacité',     'items': {f'PE_{i}': ''  for i in range(1,5)}},
-    'EE':  {'full_name': 'Effort',         'items': {f'EE_{i}': ''  for i in range(1,5)}},
-    'FC':  {'full_name': 'Facilitants',    'items': {f'FC_{i}': ''  for i in range(1,5)}},
-    'SI':  {'full_name': 'Social',         'items': {f'SI_{i}': ''  for i in range(1,5)}},
+    'ADT': {'full_name': 'Adoption Digitale',    'items': [f'ADT_{i}' for i in range(1,5)]},
+    'INT': {'full_name': 'Intention d’Usage',   'items': [f'INT_{i}' for i in range(1,5)]},
+    'SAT': {'full_name': 'Satisfaction',        'items': [f'SAT_{i}' for i in range(1,5)]},
+    'FOR': {'full_name': 'Formation & Support', 'items': [f'FOR_{i}' for i in range(1,5)]},
+    'RE':  {'full_name': 'Résistance au Changement', 'items': [f'RE_{i}' for i in range(1,5)]},
+    'PE':  {'full_name': 'Performance Attendue','items': [f'PE_{i}' for i in range(1,5)]},
+    'EE':  {'full_name': 'Effort Attendu',     'items': [f'EE_{i}' for i in range(1,5)]},
+    'FC':  {'full_name': 'Conditions Facilitantes','items': [f'FC_{i}' for i in range(1,5)]},
+    'SI':  {'full_name': 'Influence Sociale',   'items': [f'SI_{i}' for i in range(1,5)]}
 }
 
-# Tabs
+# --- Tabs ---
 tabs = st.tabs([
-    'Accueil','Univariée','Bivariée','Corrélations','Préparation','Régression','Synthèse'
+    'Accueil',
+    'Analyse Univariée',
+    'Analyse Bivariée',
+    'Corrélations',
+    'Préparation',
+    'Modélisation',
+    'Synthèse'
 ])
 
-# Tab: Accueil
+# --- Tab: Accueil ---
 with tabs[0]:
-    st.title('Tableau de Bord ADII')
-    st.write('Analyse de la transformation digitale à l\'ADII')
+    st.title('📊 Tableau de Bord – Transformation Digitale ADII')
+    st.markdown(
+        "Cette application analyse les résultats de l'enquête ADII sur la transformation digitale,\n"
+        "avec visualisations interactives et analyses statistiques."
+    )
 
-# Tab: Univariée
+# --- Tab: Analyse Univariée ---
 with tabs[1]:
-    st.header('Analyse Univariée')
+    st.header('📊 Analyse Univariée & Réponses')
     for key, info in var_dict.items():
-        cols = list(info['items'].keys())
-        if set(cols).issubset(df.columns):
-            mean_score = calculate_mean_score(df, cols)
-            st.metric(info['full_name'], f"{mean_score:.2f}/5")
-            fig = px.histogram(df, x=df[cols].mean(axis=1), nbins=20,
-                               title=f'Distribution {info["full_name"]}')
-            st.plotly_chart(fig)
+        cols = info['items']
+        if not set(cols).issubset(df.columns):
+            continue
+        st.subheader(info['full_name'])
+        # Raw responses sample
+        st.markdown('**Exemple de réponses brutes :**')
+        st.dataframe(df[cols].head(5))
+        # Descriptive statistics
+        desc = df[cols].describe().T[['count','mean','std','min','25%','50%','75%','max']]
+        st.markdown('**Statistiques descriptives :**')
+        st.dataframe(desc)
+        # Distribution per question
+        for col in cols:
+            counts = df[col].value_counts().reindex([1,2,3,4,5], fill_value=0)
+            fig = px.bar(
+                x=counts.index, y=counts.values,
+                labels={'x':'Échelle (1-5)','y':'Nombre de réponses'},
+                title=f'{col} : Distribution des réponses'
+            )
+            st.plotly_chart(fig, use_container_width=True)
+        st.markdown('---')
 
-# Tab: Bivariée
+# --- Tab: Analyse Bivariée ---
 with tabs[2]:
-    st.header('Analyse Bivariée')
-    all_items = [v for info in var_dict.values() for v in info['items'].keys()]
+    st.header('🔄 Analyse Bivariée')
+    all_items = [item for info in var_dict.values() for item in info['items']]
     x = st.selectbox('Variable X', all_items)
     y = st.selectbox('Variable Y', all_items, index=1)
     if x in df.columns and y in df.columns:
-        fig = px.scatter(df, x=x, y=y, trendline='ols')
+        fig = px.scatter(df, x=x, y=y, trendline='ols',
+                         title=f'Relation entre {x} et {y}')
         st.plotly_chart(fig)
-        res = perform_advanced_analysis(df, x, y)
-        st.json(res)
-        for ins in generate_insights(res, x, y): st.write('-', ins)
 
-# Tab: Corrélations
+# --- Tab: Corrélations ---
 with tabs[3]:
-    st.header('Corrélations')
+    st.header('🔗 Corrélations')
     dims = st.multiselect('Dimensions', list(var_dict.keys()), default=list(var_dict.keys())[:3])
     cols = [f"{d}_{i}" for d in dims for i in range(1,5) if f"{d}_{i}" in df.columns]
     corr = df[cols].corr()
     fig = px.imshow(corr, title='Matrice de Corrélation')
-    st.plotly_chart(fig)
+    st.plotly_chart(fig, use_container_width=True)
 
-# Tab: Préparation
+# --- Tab: Préparation ---
 with tabs[4]:
-    st.header('Préparation')
-    enc = {}
+    st.header('🛠️ Préparation des Données')
+    encoders = {}
     for col in ['Profil','Sexe','Diplome']:
         if col in df.columns:
             le = LabelEncoder()
             df[col+'_enc'] = le.fit_transform(df[col].fillna(''))
-            enc[col] = dict(zip(le.classes_, le.transform(le.classes_)))
-    st.json(enc)
+            encoders[col] = dict(zip(le.classes_, le.transform(le.classes_)))
+    st.json(encoders)
 
-# Tab: Régression
+# --- Tab: Modélisation ---
 with tabs[5]:
-    st.header('Régression Linéaire')
-    all_items = [v for info in var_dict.values() for v in info['items'].keys()]
-    target = st.selectbox('Cible', all_items)
-    features = st.multiselect('Features', [c for c in df.columns if c.endswith('_enc')])
-    if st.button('Exécuter') and target in df.columns and features:
-        X = df[features]; y = df[target]
-        model = LinearRegression().fit(X, y)
-        pred = model.predict(X)
-        st.metric('R²', f"{r2_score(y, pred):.3f}")
-        coefs = pd.DataFrame({'Feature': features, 'Coef': model.coef_})
-        st.bar_chart(coefs.set_index('Feature'))
+    st.header('📈 Modélisation & Analyses Statistiques')
+    model_type = st.selectbox(
+        "Type de modèle",
+        ['Régression Linéaire', 'Régression Logistique']
+    )
+    numeric_cols = df.select_dtypes(include=[np.number]).columns.tolist()
+    target = st.selectbox("Variable cible", numeric_cols)
+    features = st.multiselect(
+        "Variables explicatives",
+        [c for c in numeric_cols if c != target],
+        default=numeric_cols[:3]
+    )
 
-# Tab: Synthèse
+    if st.button("Entraîner le modèle"):
+        if not features:
+            st.error("Sélectionnez au moins une variable explicative.")
+        else:
+            X = df[features]
+            y = df[target]
+            if model_type == 'Régression Linéaire':
+                model = LinearRegression()
+                model.fit(X, y)
+                preds = model.predict(X)
+                st.metric("R² Score", f"{r2_score(y, preds):.3f}")
+                coef_df = pd.DataFrame({'Variable': features, 'Coefficient': model.coef_}).set_index('Variable')
+                st.bar_chart(coef_df)
+            else:
+                if y.nunique() != 2:
+                    st.error("⚠️ La variable cible doit être binaire pour la régression logistique.")
+                else:
+                    X_train, X_test, y_train, y_test = train_test_split(
+                        X, y, test_size=0.3, random_state=42
+                    )
+                    log_model = LogisticRegression(max_iter=1000)
+                    log_model.fit(X_train, y_train)
+                    y_pred = log_model.predict(X_test)
+                    y_proba = log_model.predict_proba(X_test)[:, 1]
+                    st.metric("Accuracy", f"{accuracy_score(y_test, y_pred):.3f}")
+                    st.metric("ROC AUC", f"{roc_auc_score(y_test, y_proba):.3f}")
+                    st.text(classification_report(y_test, y_pred))
+
+# --- Tab: Synthèse ---
 with tabs[6]:
-    st.header('Synthèse')
-    scores = {info['full_name']: calculate_mean_score(df, list(info['items'].keys())) for info in var_dict.values()}
+    st.header('🎯 Synthèse')
+    scores = {info['full_name']: calculate_mean_score(df, info['items']) for info in var_dict.values()}
     categories, values = list(scores.keys()), list(scores.values())
     fig = go.Figure(go.Scatterpolar(r=values+[values[0]], theta=categories+[categories[0]], fill='toself'))
-    st.plotly_chart(fig)
-    export_results(df, scores)
+    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,5])))
+    st.plotly_chart(fig, use_container_width=True)
+    # Export
+    data = pd.DataFrame(list(scores.items()), columns=['Dimension','Score'])
+    buffer = BytesIO()
+    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
+        data.to_excel(writer, index=False)
+    st.download_button('Télécharger la synthèse', data=buffer.getvalue(), file_name='synthese.xlsx')
+```
