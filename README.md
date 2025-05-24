@@ -1,25 +1,39 @@
-# 📦 Streamlit App Starter Kit 
-```
-⬆️ (Replace above with your app's name)
-```
+# Analyse ADII - Application Streamlit
 
-Description of the app ...
+Cette application Streamlit permet d'analyser les données d'une enquête sur la digitalisation à l'ADII. Elle offre une analyse complète des données à travers plusieurs aspects :
 
-## Demo App
+## Fonctionnalités
 
-[![Streamlit App](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://app-starter-kit.streamlit.app/)
+1. **Analyse descriptive univariée**
+   - Statistiques descriptives des variables quantitatives
+   - Histogrammes et boxplots des scores
+   - Répartition des profils, sexes, diplômes
+   - Fréquences des plateformes utilisées
 
-## GitHub Codespaces
+2. **Analyse bivariée**
+   - Comparaison des moyennes selon différents facteurs
+   - Tests statistiques (ANOVA/Kruskal-Wallis)
 
-[![Open in GitHub Codespaces](https://github.com/codespaces/badge.svg)](https://codespaces.new/streamlit/app-starter-kit?quickstart=1)
+3. **Analyse des corrélations**
+   - Matrice de corrélation
+   - Mise en évidence des corrélations fortes
 
-## Section Heading
+4. **Préparation des données**
+   - Encodage des variables catégorielles
+   - Sélection de variables cibles
+   - Analyse des distributions
 
-This is filler text, please replace this with text for this section.
+5. **Régression linéaire**
+   - Modélisation prédictive
+   - Analyse des coefficients
+   - Diagnostics de régression
 
-## Further Reading
+6. **Visualisation finale**
+   - Comparaison prédictions/réalité
+   - Analyse des groupes
+   - Synthèse des insights
 
-This is filler text, please replace this with a explanatory text about further relevant resources for this repo
-- Resource 1
-- Resource 2
-- Resource 3
+## Installation
+
+```bash
+pip install -r requirements.txt
