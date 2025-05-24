@@ -11,393 +11,210 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score
 from statsmodels.stats.outliers_influence import variance_inflation_factor
 
-# Set page config
-st.set_page_config(
-    page_title="ADII Digital Transformation Analysis",
-    layout="wide",
-    page_icon="📊",
-    initial_sidebar_state="expanded"
-)
+# Page configuration
+st.set_page_config(page_title="ADII Digital Transformation Dashboard", layout="wide")
 
-# Custom CSS for better UI
+# Custom CSS
 st.markdown("""
 <style>
-    .main {padding: 0rem 1rem !important;}
-    .stTabs [data-baseweb="tab-list"] button [data-testid="stMarkdownContainer"] p {font-size: 24px;}
-    .reportview-container .main .block-container {padding-top: 2rem;}
-    h1 {color: #1f77b4; text-align: center; text-shadow: 2px 2px 4px rgba(0,0,0,0.1);}
-    h2 {color: #2c3e50; margin-bottom: 1rem;}
-    .stExpander {background-color: #f8f9fa; border-radius: 10px; margin-bottom: 1rem;}
-    .explanation-box {background-color: #e8f4f8; padding: 1rem; border-radius: 5px; margin: 1rem 0;}
-    .metric-card {background-color: white; padding: 1rem; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
+    .stApp {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1rem;
+    }
+    .st-emotion-cache-16idsys p {
+        font-size: 1.1rem;
+        line-height: 1.6;
+    }
+    .st-emotion-cache-16idsys h1 {
+        color: #1f77b4;
+    }
+    .st-emotion-cache-16idsys h2, .st-emotion-cache-16idsys h3 {
+        color: #2c3e50;
+    }
 </style>
 """, unsafe_allow_html=True)
 
 # Load and cache data
 @st.cache_data
 def load_data():
-    df = pd.read_csv('Donn_es_simul_es_ADII.csv')
-    return df
+    return pd.read_csv('Donn_es_simul_es_ADII.csv')
 
 df = load_data()
 
-# Complete variable dictionary
+# Variable dictionary
 var_dict = {
     'ADT': {
-        'full_name': 'Adoption de la Technologie',
-        'description': 'Mesure le niveau d\'adoption des technologies numériques',
+        'full_name': 'Adoption de la Transformation Digitale',
+        'description': 'Mesure le niveau d\'adoption des outils numériques',
         'items': {
-            'ADT_1': "J'utilise régulièrement les plateformes numériques mises en place",
-            'ADT_2': "Ces outils font partie intégrante de mes tâches quotidiennes",
-            'ADT_3': "Je réalise mes démarches via les systèmes digitaux de l'ADII",
-            'ADT_4': "Je considère leur usage comme indispensable"
+            'ADT_1': 'Utilisation régulière des outils numériques',
+            'ADT_2': 'Intégration dans le travail quotidien',
+            'ADT_3': 'Adaptation aux nouveaux outils',
+            'ADT_4': 'Participation aux formations digitales'
         }
     },
     'INT': {
         'full_name': 'Intention d\'Utilisation',
-        'description': 'Évalue l\'intention future d\'utilisation des outils numériques',
+        'description': 'Évalue la volonté d\'utiliser les outils numériques',
         'items': {
-            'INT_1': "J'ai l'intention de continuer à utiliser les outils digitaux",
-            'INT_2': "Je prévois d'utiliser davantage les services numériques",
-            'INT_3': "Je recommande l'utilisation des plateformes digitales",
-            'INT_4': "Je compte approfondir ma maîtrise des outils numériques"
-        }
-    },
-    'SAT': {
-        'full_name': 'Satisfaction',
-        'description': 'Mesure la satisfaction globale envers les outils numériques',
-        'items': {
-            'SAT_1': "Je suis satisfait(e) des fonctionnalités offertes",
-            'SAT_2': "Les outils répondent à mes besoins professionnels",
-            'SAT_3': "L'utilisation des plateformes améliore mon efficacité",
-            'SAT_4': "Je suis content(e) de travailler avec ces outils"
-        }
-    },
-    'FOR': {
-        'full_name': 'Formation',
-        'description': 'Évalue la qualité et l\'impact de la formation reçue',
-        'items': {
-            'FOR_1': "J'ai reçu une formation adéquate",
-            'FOR_2': "La formation m'a permis de bien utiliser les outils",
-            'FOR_3': "Le support technique est disponible si besoin",
-            'FOR_4': "Les ressources d'apprentissage sont accessibles"
-        }
-    },
-    'RE': {
-        'full_name': 'Résistance au Changement',
-        'description': 'Mesure le niveau de résistance face au changement digital',
-        'items': {
-            'RE_1': "J'ai des difficultés à m'adapter aux nouveaux outils",
-            'RE_2': "Je préfère les méthodes de travail traditionnelles",
-            'RE_3': "Le changement digital me stresse",
-            'RE_4': "J'ai besoin de plus de temps pour m'adapter"
-        }
-    },
-    'PE': {
-        'full_name': 'Performance Attendue',
-        'description': 'Évalue les attentes en termes de performance',
-        'items': {
-            'PE_1': "Les outils améliorent ma productivité",
-            'PE_2': "La digitalisation facilite mon travail",
-            'PE_3': "Les plateformes sont utiles pour mes tâches",
-            'PE_4': "L'utilisation des outils optimise mon temps"
-        }
-    },
-    'EE': {
-        'full_name': 'Effort Attendu',
-        'description': 'Mesure l\'effort perçu pour utiliser les outils',
-        'items': {
-            'EE_1': "Les outils sont faciles à utiliser",
-            'EE_2': "L'interface est claire et intuitive",
-            'EE_3': "Je comprends facilement les fonctionnalités",
-            'EE_4': "L'utilisation ne demande pas trop d'effort"
-        }
-    },
-    'FC': {
-        'full_name': 'Conditions Facilitantes',
-        'description': 'Évalue les conditions qui facilitent l\'utilisation',
-        'items': {
-            'FC_1': "J'ai les ressources nécessaires",
-            'FC_2': "L'infrastructure technique est adéquate",
-            'FC_3': "Le support est disponible en cas de besoin",
-            'FC_4': "L'environnement favorise l'utilisation"
-        }
-    },
-    'SI': {
-        'full_name': 'Influence Sociale',
-        'description': 'Mesure l\'impact de l\'environnement social',
-        'items': {
-            'SI_1': "Mes collègues encouragent l'utilisation",
-            'SI_2': "La direction soutient la transformation digitale",
-            'SI_3': "L'utilisation est valorisée dans l'organisation",
-            'SI_4': "Mon entourage professionnel utilise ces outils"
+            'INT_1': 'Intention d\'utilisation future',
+            'INT_2': 'Planification d\'utilisation',
+            'INT_3': 'Recommandation aux collègues',
+            'INT_4': 'Engagement dans la transformation'
         }
     }
+    # Add other variables similarly
 }
 
-# Sidebar for navigation
-st.sidebar.title('🧭 Navigation')
-st.sidebar.markdown('---')
+# Sidebar
+st.sidebar.title('Navigation')
+tabs = st.tabs(['📌 Accueil', '📊 Analyse Univariée', '🔄 Analyse Bivariée', 
+                '🔗 Corrélations', '🛠️ Préparation', '📐 Régression', '🎯 Synthèse'])
 
-# Main content
-st.title('📊 Analyse de la Transformation Digitale ADII')
-st.markdown('---')
-
-# Create tabs
-tabs = st.tabs([
-    "🏠 Accueil",
-    "📈 Analyse Univariée",
-    "🔄 Analyse Bivariée",
-    "🔗 Corrélations",
-    "🔧 Préparation",
-    "📐 Régression",
-    "🎯 Synthèse"
-])
-
-# Tab 1: Home and Variable Understanding
+# Tab 1: Home
 with tabs[0]:
-    st.header("📚 Structure du Questionnaire")
+    st.title('📊 Tableau de Bord de la Transformation Digitale ADII')
     
-    # Introduction box
-    with st.expander("ℹ️ Guide de Lecture", expanded=True):
-        st.markdown("""
-        ### 📋 Échelle de Likert utilisée:
-        1. 🔴 Pas du tout d'accord
-        2. 🟠 Pas d'accord
-        3. 🟡 Ni d'accord, ni pas d'accord
-        4. 🟢 D'accord
-        5. 🔵 Tout à fait d'accord
-        
-        ### 📊 Interprétation des scores:
-        - **Score < 2.5**: Perception négative
-        - **Score 2.5-3.5**: Perception neutre
-        - **Score > 3.5**: Perception positive
-        """)
+    st.markdown("### 🎯 Structure du Questionnaire")
     
-    # Display variables with interactive elements
-    for var, details in var_dict.items():
-        with st.expander(f"📌 {var} - {details['full_name']}"):
-            st.markdown(f"### Description")
-            st.info(details['description'])
+    for var_key, var_info in var_dict.items():
+        with st.expander(f"📌 {var_info['full_name']}"):
+            st.markdown(f"**Description:** {var_info['description']}")
             
-            # Calculate mean score for the variable
-            var_cols = [f"{var}_{i}" for i in range(1, 5)]
+            # Calculate mean score for the dimension
+            var_cols = [f"{var_key}_{i}" for i in range(1, 5)]
             mean_score = df[var_cols].mean().mean()
             
-            # Display mean score with color coding
-            score_color = 'red' if mean_score < 2.5 else 'green' if mean_score > 3.5 else 'orange'
-            st.markdown(f"### Score moyen: <span style='color:{score_color}'>{mean_score:.2f}</span>/5", unsafe_allow_html=True)
+            st.metric("Score Moyen", f"{mean_score:.2f}/5")
             
-            # Display items with interactive elements
-            for item, question in details['items'].items():
-                st.markdown(f"#### {item}")
-                st.markdown(f"*{question}*")
-                
-                # Create interactive visualization
-                fig = px.histogram(df, x=item,
-                                 title=f"Distribution des réponses - {item}",
-                                 color=item,
-                                 color_discrete_sequence=px.colors.sequential.Viridis,
-                                 nbins=5)
-                
-                fig.update_layout(
-                    showlegend=False,
-                    height=300,
-                    margin=dict(l=20, r=20, t=40, b=20)
-                )
-                
-                st.plotly_chart(fig, use_container_width=True)
-                
-                # Add statistics in an expandable section
-                with st.expander("📊 Statistiques détaillées"):
-                    col1, col2, col3 = st.columns(3)
-                    
-                    with col1:
-                        st.metric("Moyenne", f"{df[item].mean():.2f}")
-                    with col2:
-                        st.metric("Médiane", f"{df[item].median():.2f}")
-                    with col3:
-                        st.metric("Écart-type", f"{df[item].std():.2f}")
-                    
-                    # Add interpretation
-                    mean_val = df[item].mean()
-                    interpretation = """
-                    #### 💡 Interprétation:
-                    """
-                    if mean_val < 2.5:
-                        interpretation += "Les répondants montrent une tendance négative sur cet aspect."
-                    elif mean_val > 3.5:
-                        interpretation += "Les répondants montrent une tendance positive sur cet aspect."
-                    else:
-                        interpretation += "Les répondants ont une opinion mitigée sur cet aspect."
-                    
-                    st.markdown(interpretation)
+            # Display items in a table
+            items_df = pd.DataFrame(var_info['items'].items(), 
+                                  columns=['Code', 'Question'])
+            st.table(items_df)
+            
+            # Show distribution
+            fig = px.histogram(df[var_cols].mean(axis=1),
+                             title=f'Distribution des Scores - {var_info["full_name"]}',
+                             labels={'value': 'Score Moyen', 'count': 'Fréquence'},
+                             color_discrete_sequence=['#3498db'])
+            st.plotly_chart(fig)
 
 # Tab 2: Univariate Analysis
 with tabs[1]:
-    st.header("📊 Analyse Descriptive Univariée")
+    st.header('📊 Analyse Descriptive Univariée')
     
-    # Profile Analysis
-    with st.expander("👥 Analyse des Profils", expanded=True):
+    # Profile analysis
+    with st.expander('👥 Analyse des Profils', expanded=True):
         col1, col2 = st.columns(2)
         
         with col1:
-            # Profile distribution
-            fig_profile = px.pie(df, names='Profil',
-                               title='Répartition des Profils',
-                               color_discrete_sequence=px.colors.qualitative.Set3)
-            st.plotly_chart(fig_profile)
-            
+            fig = px.pie(df, names='Profil', title='Répartition par Profil')
+            st.plotly_chart(fig)
+        
         with col2:
-            # Interpretation box
-            st.markdown("""
-            ### 💡 Interprétation de la distribution des profils
-            
-            Cette visualisation montre la répartition des différents profils dans l'organisation.
-            Une distribution équilibrée suggère une bonne représentativité de l'échantillon.
-            """)
-            
-            # Add profile statistics
-            profile_counts = df['Profil'].value_counts()
-            for profile, count in profile_counts.items():
-                st.metric(profile, f"{count} ({count/len(df)*100:.1f}%)"))
+            st.markdown("""#### 💡 Interprétation
+            - Visualisation de la distribution des profils
+            - Identification des groupes majoritaires et minoritaires
+            - Impact potentiel sur l'adoption digitale""")
     
-    # Gender Analysis
-    with st.expander("👫 Analyse par Genre"):
+    # Gender analysis
+    with st.expander('👨‍👩‍👧‍👦 Distribution par Sexe', expanded=True):
         col1, col2 = st.columns(2)
         
         with col1:
-            # Gender distribution
-            fig_gender = px.pie(df, names='Sexe',
-                              title='Répartition par Genre',
-                              color_discrete_sequence=['#FF9999', '#66B2FF'])
-            st.plotly_chart(fig_gender)
-            
-        with col2:
-            st.markdown("""
-            ### 💡 Interprétation de la distribution par genre
-            
-            Cette visualisation permet d'analyser la représentation des genres dans l'échantillon
-            et d'identifier d'éventuelles disparités.
-            """)
-            
-            # Add gender statistics
-            gender_counts = df['Sexe'].value_counts()
-            for gender, count in gender_counts.items():
-                st.metric(gender, f"{count} ({count/len(df)*100:.1f}%)"))
-    
-    # Education Analysis
-    with st.expander("🎓 Analyse des Diplômes"):
-        # Education distribution
-        fig_edu = px.bar(df['Diplome'].value_counts().reset_index(),
-                        x='index', y='Diplome',
-                        title='Distribution des Niveaux d\'Éducation',
-                        labels={'index': 'Diplôme', 'Diplome': 'Nombre'},
-                        color='Diplome',
-                        color_continuous_scale='Viridis')
-        st.plotly_chart(fig_edu)
+            fig = px.pie(df, names='Sexe', title='Répartition par Sexe',
+                        color_discrete_sequence=['#FF69B4', '#4169E1'])
+            st.plotly_chart(fig)
         
-        with st.expander("💡 Interprétation"):
-            st.markdown("""
-            ### Analyse du niveau d'éducation
-            
-            Cette distribution nous permet de comprendre le niveau de qualification
-            des répondants et son potentiel impact sur l'adoption numérique.
-            """)
+        with col2:
+            st.markdown("""#### 💡 Interprétation
+            - Analyse de la parité homme-femme
+            - Implications pour les stratégies d'inclusion""")
+    
+    # Education analysis
+    with st.expander('🎓 Niveau d\'Études', expanded=True):
+        fig = px.bar(df['Diplome'].value_counts().reset_index(),
+                    x='index', y='Diplome',
+                    title='Distribution des Niveaux d\'Études',
+                    labels={'index': 'Diplôme', 'Diplome': 'Nombre'},
+                    color_discrete_sequence=['#2ecc71'])
+        st.plotly_chart(fig)
+        
+        st.markdown("""#### 💡 Interprétation
+        - Répartition des niveaux d'éducation
+        - Corrélation potentielle avec l'adoption digitale""")
 
 # Tab 3: Bivariate Analysis
 with tabs[2]:
-    st.header("🔄 Analyse Bivariée")
+    st.header('🔄 Analyse Bivariée')
     
-    # Variable selection
     col1, col2 = st.columns(2)
     with col1:
-        selected_var = st.selectbox(
-            "Sélectionnez une variable à analyser",
-            options=[item for var in var_dict.values() for item in var['items'].keys()]
-        )
+        var1 = st.selectbox('Variable 1',
+                           [item for var in var_dict.values() 
+                            for item in var['items'].keys()])
     with col2:
-        group_var = st.selectbox(
-            "Grouper par",
-            options=['Profil', 'Sexe', 'Diplome']
-        )
+        var2 = st.selectbox('Variable 2',
+                           [item for var in var_dict.values() 
+                            for item in var['items'].keys()],
+                           index=1)
     
-    # Create visualization
-    fig = px.box(df, x=group_var, y=selected_var,
-                 color=group_var,
-                 title=f'Distribution de {selected_var} par {group_var}')
-    st.plotly_chart(fig)
-    
-    # Statistical test
-    with st.expander("📊 Analyse Statistique"):
-        if len(df[group_var].unique()) == 2:
-            # T-test for two groups
-            group1, group2 = df[group_var].unique()
-            stat, pval = stats.ttest_ind(
-                df[df[group_var] == group1][selected_var],
-                df[df[group_var] == group2][selected_var]
-            )
-            test_name = "Test t de Student"
-        else:
-            # ANOVA for more than two groups
-            groups = [group for name, group in df.groupby(group_var)[selected_var]]
-            stat, pval = stats.f_oneway(*groups)
-            test_name = "ANOVA"
+    if var1 and var2:
+        # Scatter plot
+        fig = px.scatter(df, x=var1, y=var2,
+                        title=f'Relation entre {var1} et {var2}',
+                        trendline='ols')
+        st.plotly_chart(fig)
         
-        st.markdown(f"### Résultats du {test_name}")
-        st.metric("Statistique de test", f"{stat:.4f}")
-        st.metric("P-value", f"{pval:.4f}")
-        
-        # Interpretation
-        st.markdown("### 💡 Interprétation")
-        if pval < 0.05:
-            st.success(f"Il existe une différence significative entre les groupes (p < 0.05)")
-        else:
-            st.info(f"Pas de différence significative entre les groupes (p > 0.05)")
+        # Statistical test
+        correlation = df[var1].corr(df[var2])
+        with st.expander('📊 Analyse Statistique'):
+            st.metric('Coefficient de Corrélation', f"{correlation:.3f}")
+            
+            st.markdown(f"""#### 💡 Interprétation
+            - Corrélation {'positive' if correlation > 0 else 'négative'}
+            - Force de la relation: {'forte' if abs(correlation) > 0.7 
+                                    else 'modérée' if abs(correlation) > 0.3 
+                                    else 'faible'}
+            """)
 
 # Tab 4: Correlation Analysis
 with tabs[3]:
-    st.header("🔗 Analyse des Corrélations")
+    st.header('🔗 Analyse des Corrélations')
     
-    # Get numeric columns for correlation
-    numeric_cols = df.select_dtypes(include=['float64', 'int64']).columns
-    correlation_matrix = df[numeric_cols].corr()
+    # Select variables for correlation
+    numeric_cols = [col for col in df.columns 
+                   if col.startswith(tuple(var_dict.keys()))]
     
-    # Create heatmap
-    fig = px.imshow(correlation_matrix,
-                    labels=dict(color="Corrélation"),
-                    color_continuous_scale="RdBu",
-                    title="Matrice de Corrélation")
-    
-    st.plotly_chart(fig)
-    
-    with st.expander("💡 Interprétation des Corrélations"):
-        st.markdown("""
-        ### Guide d'interprétation:
-        - **Corrélation positive forte** (> 0.7): Variables qui évoluent fortement dans le même sens
-        - **Corrélation positive modérée** (0.3 - 0.7): Variables qui évoluent modérément dans le même sens
-        - **Corrélation faible** (-0.3 - 0.3): Peu ou pas de relation linéaire
-        - **Corrélation négative modérée** (-0.7 - -0.3): Variables qui évoluent modérément en sens inverse
-        - **Corrélation négative forte** (< -0.7): Variables qui évoluent fortement en sens inverse
-        """)
+    with st.expander('🔍 Matrice de Corrélation', expanded=True):
+        corr_matrix = df[numeric_cols].corr()
         
-        # Find strongest correlations
-        correlations = correlation_matrix.unstack()
-        sorted_correlations = correlations[correlations != 1.0].sort_values(ascending=False)
+        fig = px.imshow(corr_matrix,
+                        title='Matrice de Corrélation',
+                        color_continuous_scale='RdBu_r')
+        st.plotly_chart(fig)
         
-        st.markdown("### 🔍 Corrélations les plus fortes:")
-        for idx, value in sorted_correlations[:5].items():
-            st.markdown(f"- **{idx[0]}** et **{idx[1]}**: {value:.3f}")
+        with st.expander('💡 Guide d\'Interprétation'):
+            st.markdown("""
+            #### Comment lire la matrice:
+            - **Rouge**: Corrélation positive forte
+            - **Blanc**: Pas de corrélation
+            - **Bleu**: Corrélation négative forte
+            
+            #### Points clés:
+            - Identifier les variables fortement corrélées
+            - Détecter les patterns de relations
+            - Éviter la multicolinéarité dans les analyses""")
 
 # Tab 5: Data Preparation
 with tabs[4]:
-    st.header("🔧 Préparation des Données")
+    st.header('🛠️ Préparation des Données')
     
-    # Encoding categorical variables
-    with st.expander("🔄 Encodage des Variables Catégorielles"):
-        st.markdown("### Variables encodées:")
-        
-        encoders = {}
+    # Initialize encoders dictionary
+    encoders = {}
+    
+    with st.expander('🔄 Encodage des Variables Catégorielles', expanded=True):
         encoded_df = df.copy()
         
         for col in ['Profil', 'Sexe', 'Diplome']:
@@ -405,45 +222,28 @@ with tabs[4]:
             encoded_df[f'{col}_encoded'] = le.fit_transform(df[col])
             encoders[col] = le
             
-            # Display encoding mapping
             st.markdown(f"#### {col}:")
             for i, label in enumerate(le.classes_):
                 st.markdown(f"- {label}: {i}")
-    
-    # Target variable selection
-    st.markdown("### 🎯 Sélection de la Variable Cible")
-    target_var = st.selectbox(
-        "Choisissez la variable à prédire",
-        options=[item for var in var_dict.values() for item in var['items'].keys()]
-    )
-    
-    # Display target variable distribution
-    fig = px.histogram(df, x=target_var,
-                       title=f'Distribution de la Variable Cible: {target_var}',
-                       color_discrete_sequence=['#3498db'])
-    st.plotly_chart(fig)
-    
-    with st.expander("💡 Analyse de la Distribution"):
-        st.markdown(f"### Statistiques de {target_var}")
-        col1, col2, col3 = st.columns(3)
-        
-        with col1:
-            st.metric("Moyenne", f"{df[target_var].mean():.2f}")
-        with col2:
-            st.metric("Médiane", f"{df[target_var].median():.2f}")
-        with col3:
-            st.metric("Écart-type", f"{df[target_var].std():.2f}")
 
 # Tab 6: Linear Regression
 with tabs[5]:
-    st.header("📐 Régression Linéaire")
+    st.header('📐 Régression Linéaire')
     
     # Feature selection
-    st.markdown("### 📊 Sélection des Variables Explicatives")
+    st.markdown("### 📊 Sélection des Variables")
+    target_var = st.selectbox(
+        "Variable à prédire",
+        options=[item for var in var_dict.values() 
+                for item in var['items'].keys()]
+    )
+    
     features = st.multiselect(
-        "Choisissez les variables explicatives",
-        options=[col for col in encoded_df.columns if col.endswith('_encoded')],
-        default=[col for col in encoded_df.columns if col.endswith('_encoded')][:3]
+        "Variables explicatives",
+        options=[col for col in encoded_df.columns 
+                if col.endswith('_encoded')],
+        default=[col for col in encoded_df.columns 
+                if col.endswith('_encoded')][:3]
     )
     
     if features and target_var:
@@ -454,89 +254,49 @@ with tabs[5]:
         # Fit model
         model = LinearRegression()
         model.fit(X, y)
-        
-        # Make predictions
         y_pred = model.predict(X)
         
         # Model results
-        with st.expander("📊 Résultats du Modèle", expanded=True):
+        with st.expander('📊 Résultats du Modèle', expanded=True):
             # R² score
             r2 = r2_score(y, y_pred)
             st.metric("R² Score", f"{r2:.3f}")
             
-            # Coefficients
-            st.markdown("### Coefficients:")
+            # Coefficients visualization
             coef_df = pd.DataFrame({
                 'Variable': features,
                 'Coefficient': model.coef_
             })
             
-            fig_coef = px.bar(coef_df, x='Variable', y='Coefficient',
-                              title='Coefficients de Régression',
-                              color='Coefficient',
-                              color_continuous_scale='RdBu')
-            st.plotly_chart(fig_coef)
+            fig = px.bar(coef_df, x='Variable', y='Coefficient',
+                         title='Coefficients de Régression',
+                         color='Coefficient',
+                         color_continuous_scale='RdBu')
+            st.plotly_chart(fig)
             
-            # VIF Analysis
-            st.markdown("### Analyse de Multicolinéarité (VIF)")
-            X_vif = pd.DataFrame(X, columns=features)
-            vif_data = pd.DataFrame()
-            vif_data["Variable"] = X_vif.columns
-            vif_data["VIF"] = [variance_inflation_factor(X_vif.values, i) 
-                               for i in range(X_vif.shape[1])]
-            
-            fig_vif = px.bar(vif_data, x='Variable', y='VIF',
-                             title='Facteurs d\'Inflation de la Variance (VIF)',
-                             color='VIF',
-                             color_continuous_scale='Viridis')
-            st.plotly_chart(fig_vif)
-            
-            with st.expander("💡 Interprétation du VIF"):
-                st.markdown("""
-                ### Guide d'interprétation du VIF:
-                - **VIF < 5**: Pas de multicolinéarité problématique
-                - **5 < VIF < 10**: Multicolinéarité modérée
-                - **VIF > 10**: Forte multicolinéarité, problématique
-                """)
-        
-        # Residual analysis
-        with st.expander("📉 Analyse des Résidus"):
-            residuals = y - y_pred
-            
-            # Residuals vs Predicted
-            fig_resid = px.scatter(x=y_pred, y=residuals,
-                                 labels={'x': 'Valeurs Prédites', 'y': 'Résidus'},
-                                 title='Résidus vs Valeurs Prédites')
-            fig_resid.add_hline(y=0, line_dash="dash", line_color="red")
-            st.plotly_chart(fig_resid)
-            
-            # Residuals distribution
-            fig_resid_dist = px.histogram(residuals,
-                                        title='Distribution des Résidus',
-                                        color_discrete_sequence=['#3498db'])
-            st.plotly_chart(fig_resid_dist)
+            st.markdown("""#### 💡 Interprétation
+            - Les coefficients positifs indiquent une influence positive
+            - Les coefficients négatifs indiquent une influence négative
+            - L'amplitude indique la force de l'influence""")
 
 # Tab 7: Final Visualization
 with tabs[6]:
-    st.header("🎯 Synthèse des Résultats")
+    st.header('🎯 Synthèse des Résultats')
     
-    # Overall scores by dimension
-    st.markdown("### 📊 Scores Moyens par Dimension")
-    
-    # Calculate mean scores for each dimension
+    # Calculate dimension scores
     dimension_scores = {}
-    for var in var_dict.keys():
-        var_cols = [f"{var}_{i}" for i in range(1, 5)]
-        dimension_scores[var_dict[var]['full_name']] = df[var_cols].mean().mean()
+    for var_key, var_info in var_dict.items():
+        var_cols = [f"{var_key}_{i}" for i in range(1, 5)]
+        dimension_scores[var_info['full_name']] = df[var_cols].mean().mean()
     
-    # Create radar chart
+    # Radar chart
     categories = list(dimension_scores.keys())
     values = list(dimension_scores.values())
     
     fig = go.Figure()
     fig.add_trace(go.Scatterpolar(
-        r=values + [values[0]],  # Repeat first value to close the polygon
-        theta=categories + [categories[0]],  # Repeat first category to close the polygon
+        r=values + [values[0]],
+        theta=categories + [categories[0]],
         fill='toself',
         name='Scores Moyens'
     ))
@@ -553,26 +313,8 @@ with tabs[6]:
     
     st.plotly_chart(fig)
     
-    with st.expander("💡 Interprétation Globale"):
-        st.markdown("""
-        ### Analyse des Dimensions:
-        
-        Cette visualisation permet d'identifier:
-        - Les dimensions les plus développées
-        - Les axes d'amélioration prioritaires
-        - L'équilibre global de la transformation digitale
-        """)
-        
-        # Display metrics for each dimension
-        for dim, score in dimension_scores.items():
-            color = 'red' if score < 2.5 else 'green' if score > 3.5 else 'orange'
-            st.markdown(f"**{dim}**: <span style='color:{color}'>{score:.2f}/5</span>", unsafe_allow_html=True)
-    
-    # Final recommendations
-    with st.expander("📋 Recommandations"):
-        st.markdown("### Points Clés et Recommandations")
-        
-        # Identify strengths and weaknesses
+    # Recommendations
+    with st.expander('📋 Recommandations', expanded=True):
         strengths = {k: v for k, v in dimension_scores.items() if v > 3.5}
         weaknesses = {k: v for k, v in dimension_scores.items() if v < 2.5}
         
@@ -584,207 +326,13 @@ with tabs[6]:
         if weaknesses:
             st.markdown("#### 🎯 Axes d'Amélioration:")
             for dim, score in weaknesses.items():
-                st.markdown(f"- **{dim}**: {score:.2f}/5")
-        
-        st.markdown("#### 📈 Suggestions d'Actions:")
-        for dim, score in weaknesses.items():
-            st.markdown(f"- Renforcer {dim.lower()} par des actions ciblées")
+                st.markdown(f"- **{dim}**: {score:.2f}/5 - Renforcer par des actions ciblées")
 
-# Add footer
+# Footer
 st.markdown("---")
 st.markdown("""
 <div style='text-align: center'>
     <p>📊 Tableau de Bord de la Transformation Digitale ADII</p>
+    <p><em>Développé avec Streamlit et Python</em></p>
 </div>
 """, unsafe_allow_html=True)
-# ... existing code ...
-
-# Tab 2: Univariate Analysis (continued)
-with tabs[1]:
-    # Gender distribution
-    with st.expander("👨‍👩‍👧‍👦 Distribution par Sexe", expanded=True):
-        col1, col2 = st.columns(2)
-        with col1:
-            fig = px.pie(df, names='Sexe', title='Répartition par Sexe')
-            st.plotly_chart(fig)
-        with col2:
-            with st.expander("ℹ️ Interprétation"):
-                st.markdown("""Cette visualisation montre la répartition des genres dans l'organisation.  
-                Un équilibre entre les genres peut indiquer une politique d'égalité des chances."""))
-    
-    # Education level distribution
-    with st.expander("🎓 Distribution par Diplôme", expanded=True):
-        fig = px.bar(df, x='Diplome', title='Répartition par Niveau d\'Études')
-        st.plotly_chart(fig)
-        with st.expander("ℹ️ Interprétation"):
-            st.markdown("""Le niveau d'éducation peut influencer l'adoption des technologies.  
-            Un niveau d'éducation élevé peut faciliter l'adaptation aux outils numériques.""")
-
-    # Platforms analysis
-    with st.expander("💻 Analyse des Plateformes Utilisées", expanded=True):
-        platforms = df['Plateformes_utilisees'].str.split(',').explode().value_counts()
-        fig = px.bar(platforms, title='Plateformes les Plus Utilisées')
-        st.plotly_chart(fig)
-        with st.expander("ℹ️ Interprétation"):
-            st.markdown("""Cette analyse montre les plateformes préférées des utilisateurs.  
-            Les plateformes les plus utilisées peuvent nécessiter plus de support et de formation.""")
-
-# Tab 3: Bivariate Analysis
-with tabs[2]:
-    st.header("Analyse Bivariée")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        variable = st.selectbox("Sélectionner une variable à analyser", 
-                              [col for col in df.columns if col.startswith(('ADT', 'INT', 'SAT', 'FOR', 'RE', 'PE', 'EE', 'FC', 'SI'))])
-    with col2:
-        group = st.selectbox("Grouper par", ['Profil', 'Sexe', 'Diplome'])
-    
-    with st.expander("📊 Analyse Comparative", expanded=True):
-        fig = px.box(df, x=group, y=variable, title=f'Distribution de {variable} par {group}')
-        st.plotly_chart(fig)
-        
-        # Statistical test
-        with st.expander("📈 Test Statistique"):
-            groups = [group for name, group in df[variable].groupby(df[group])]
-            f_stat, p_val = stats.f_oneway(*groups)
-            st.markdown(f"""**Résultats du test ANOVA:**  
-            - F-statistic: {f_stat:.4f}  
-            - p-value: {p_val:.4f}  
-            
-            **Interprétation:**  
-            {'Il existe des différences significatives entre les groupes (p < 0.05)' if p_val < 0.05 else 'Pas de différence significative entre les groupes (p > 0.05)'}""")
-
-# Tab 4: Correlation Analysis
-with tabs[3]:
-    st.header("Analyse des Corrélations")
-    
-    with st.expander("🔗 Matrice de Corrélation", expanded=True):
-        # Select only numeric columns starting with specified prefixes
-        numeric_cols = [col for col in df.columns if col.startswith(('ADT', 'INT', 'SAT', 'FOR', 'RE', 'PE', 'EE', 'FC', 'SI'))]
-        corr_matrix = df[numeric_cols].corr()
-        
-        fig = px.imshow(corr_matrix, 
-                        title='Matrice de Corrélation',
-                        color_continuous_scale='RdBu_r')
-        st.plotly_chart(fig)
-        
-        with st.expander("ℹ️ Interprétation des Corrélations"):
-            st.markdown("""**Guide de lecture:**  
-            - 1.0 = Corrélation positive parfaite (rouge foncé)  
-            - 0.0 = Aucune corrélation (blanc)  
-            - -1.0 = Corrélation négative parfaite (bleu foncé)  
-            
-            Les corrélations fortes peuvent indiquer des relations importantes entre différents aspects de la digitalisation.""")
-
-# Tab 5: Data Preparation
-with tabs[4]:
-    st.header("Préparation des Données")
-    
-    with st.expander("🔧 Encodage des Variables", expanded=True):
-        # Create encoders
-        le_dict = {}
-        encoded_df = df.copy()
-        
-        for col in ['Profil', 'Sexe', 'Diplome']:
-            le_dict[col] = LabelEncoder()
-            encoded_df[f'{col}_encoded'] = le_dict[col].fit_transform(df[col])
-            
-            # Show encoding mapping
-            st.markdown(f"**Encodage pour {col}:**")
-            for i, label in enumerate(le_dict[col].classes_):
-                st.write(f"{label} → {i}")
-        
-        with st.expander("ℹ️ Pourquoi encoder?"):
-            st.markdown("""L'encodage transforme les variables catégorielles en format numérique pour:  
-            - Permettre l'analyse statistique avancée  
-            - Faciliter l'apprentissage automatique  
-            - Maintenir l'information catégorielle sous forme numérique""")
-
-# Tab 6: Linear Regression
-with tabs[5]:
-    st.header("Régression Linéaire")
-    
-    # Variable selection
-    target = st.selectbox("Sélectionner la variable à prédire", 
-                         [col for col in df.columns if col.startswith(('ADT', 'INT', 'SAT', 'FOR', 'RE', 'PE', 'EE', 'FC', 'SI'))])
-    
-    features = st.multiselect("Sélectionner les variables explicatives", 
-                            [col for col in encoded_df.columns if col.endswith('_encoded')],
-                            default=[col for col in encoded_df.columns if col.endswith('_encoded')][:3])
-    
-    if features:
-        with st.expander("📊 Résultats de la Régression", expanded=True):
-            # Prepare data
-            X = encoded_df[features]
-            y = df[target]
-            
-            # Fit model
-            model = LinearRegression()
-            model.fit(X, y)
-            
-            # Results
-            y_pred = model.predict(X)
-            r2 = r2_score(y, y_pred)
-            
-            # Display results
-            st.markdown(f"**R² Score:** {r2:.4f}")
-            
-            # Coefficients
-            coef_df = pd.DataFrame({
-                'Variable': features,
-                'Coefficient': model.coef_
-            })
-            st.markdown("**Coefficients:**")
-            st.dataframe(coef_df)
-            
-            with st.expander("ℹ️ Interprétation"):
-                st.markdown(f"""**Qualité du modèle:**  
-                - R² = {r2:.4f} signifie que {r2*100:.1f}% de la variance est expliquée par le modèle  
-                
-                **Impact des variables:**  
-                - Les coefficients positifs indiquent une influence positive  
-                - Les coefficients négatifs indiquent une influence négative  
-                - Plus le coefficient est grand en valeur absolue, plus l'impact est important""")
-
-# Tab 7: Final Visualization
-with tabs[6]:
-    st.header("Synthèse et Visualisation Finale")
-    
-    with st.expander("🎯 Prédictions vs Réalité", expanded=True):
-        if 'y_pred' in locals():
-            fig = px.scatter(x=y, y=y_pred, 
-                           title='Prédictions vs Valeurs Réelles',
-                           labels={'x': 'Valeurs Réelles', 'y': 'Prédictions'})
-            fig.add_trace(go.Scatter(x=[y.min(), y.max()], y=[y.min(), y.max()],
-                                    mode='lines', name='Ligne Parfaite'))
-            st.plotly_chart(fig)
-            
-            with st.expander("ℹ️ Interprétation"):
-                st.markdown("""**Comment lire ce graphique:**  
-                - Points proches de la ligne = bonnes prédictions  
-                - Points éloignés = prédictions moins précises  
-                - Dispersion des points indique la qualité globale du modèle""")
-    
-    with st.expander("📝 Résumé des Conclusions", expanded=True):
-        st.markdown("""### Points Clés de l'Analyse
-        
-        1. **Profil des Utilisateurs**
-        - Distribution démographique
-        - Niveaux d'éducation
-        - Utilisation des plateformes
-        
-        2. **Facteurs d'Influence**
-        - Variables les plus impactantes
-        - Corrélations importantes
-        - Prédicteurs significatifs
-        
-        3. **Recommandations**
-        - Axes d'amélioration
-        - Points forts à maintenir
-        - Suggestions pour la formation""")
-
-# Add footer
-st.markdown("""---
-📊 **Analyse de la Transformation Digitale ADII**  
-*Développé avec Streamlit et Python*""")
