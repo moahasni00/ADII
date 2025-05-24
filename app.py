@@ -1,4 +1,3 @@
-```python
 # app.py
 import streamlit as st
 import pandas as pd
@@ -177,28 +176,4 @@ with tabs[5]:
                     st.error("⚠️ La variable cible doit être binaire pour la régression logistique.")
                 else:
                     X_train, X_test, y_train, y_test = train_test_split(
-                        X, y, test_size=0.3, random_state=42
-                    )
-                    log_model = LogisticRegression(max_iter=1000)
-                    log_model.fit(X_train, y_train)
-                    y_pred = log_model.predict(X_test)
-                    y_proba = log_model.predict_proba(X_test)[:, 1]
-                    st.metric("Accuracy", f"{accuracy_score(y_test, y_pred):.3f}")
-                    st.metric("ROC AUC", f"{roc_auc_score(y_test, y_proba):.3f}")
-                    st.text(classification_report(y_test, y_pred))
-
-# --- Tab: Synthèse ---
-with tabs[6]:
-    st.header('🎯 Synthèse')
-    scores = {info['full_name']: calculate_mean_score(df, info['items']) for info in var_dict.values()}
-    categories, values = list(scores.keys()), list(scores.values())
-    fig = go.Figure(go.Scatterpolar(r=values+[values[0]], theta=categories+[categories[0]], fill='toself'))
-    fig.update_layout(polar=dict(radialaxis=dict(visible=True, range=[0,5])))
-    st.plotly_chart(fig, use_container_width=True)
-    # Export
-    data = pd.DataFrame(list(scores.items()), columns=['Dimension','Score'])
-    buffer = BytesIO()
-    with pd.ExcelWriter(buffer, engine='xlsxwriter') as writer:
-        data.to_excel(writer, index=False)
-    st.download_button('Télécharger la synthèse', data=buffer.getvalue(), file_name='synthese.xlsx')
-```
+                        X, y, test_size=0.3, random_stat
